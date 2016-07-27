@@ -89,7 +89,7 @@ class Form(QMainWindow):
         self.on_show()
 
         self.setWindowTitle('PyQt & matplotlib demo: STM Simulation')
-        self.resize(700, 420)
+        # self.resize(700, 420)
 
     def load_file(self):
         self.filename = QFileDialog.getOpenFileName(self,
@@ -104,6 +104,11 @@ class Form(QMainWindow):
                 self.InfoLabs[irow][0].setText(u'%d' % self.VaspPchg.ngrid[irow])
                 self.InfoLabs[irow][1].setText(u'%.2f \u212B' % self.VaspPchg.abc[irow])
 
+    def save_img(self):
+        self.imgName = QFileDialog.getSaveFileName(self,
+                       'Save Image:', './untitled.png', '')
+        if self.imgName:
+            self.fig.savefig(str(self.imgName), dpi=self.dpi)
     
     def on_show(self):
         self.axes.clear()        
@@ -165,6 +170,8 @@ class Form(QMainWindow):
 
         self.loadButton = QPushButton("&Load")
         self.loadButton.clicked.connect(self.load_file)
+        self.saveButton = QPushButton("&Save Img")
+        self.saveButton.clicked.connect(self.save_img)
         self.cutButton = QPushButton("&Apply")
         self.cutButton.clicked.connect(self.on_show)
 
@@ -214,6 +221,7 @@ class Form(QMainWindow):
         self.right_vbox.addWidget(self.zcutToAngLabel, 5, 0, 1, 2)
         self.right_vbox.addWidget(self.loadButton, 9, 0)
         self.right_vbox.addWidget(self.cutButton, 9, 1)
+        self.right_vbox.addWidget(self.saveButton, 10, 0, 1, 2)
 
         # create info box
         self.createInfoGroup()
@@ -254,7 +262,7 @@ class Form(QMainWindow):
 
     def create_main_frame(self):
         self.main_frame = QWidget()
-        self.main_frame.resize(550, 420)
+        # self.main_frame.resize(550, 420)
         
         # left part
         self.createLeftPart()
