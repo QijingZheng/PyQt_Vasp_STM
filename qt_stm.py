@@ -76,6 +76,7 @@ class Form(QMainWindow):
         self.pc = None
         self.cmap = 'hot'
         self.dpi = 300
+        self.dat = None
         self.repeat_x = 1
         self.repeat_y = 1
 
@@ -109,6 +110,12 @@ class Form(QMainWindow):
                        'Save Image:', './untitled.png', '')
         if self.imgName:
             self.fig.savefig(str(self.imgName), dpi=self.dpi)
+
+    def save_dat(self):
+        self.datName = QFileDialog.getSaveFileName(self,
+                       'Save Data:', './untitled.dat', '')
+        if self.datName and self.dat:
+            np.savetxt(str(self.datName), self.dat)
     
     def on_show(self):
         self.axes.clear()        
@@ -120,14 +127,14 @@ class Form(QMainWindow):
 
             # isoHeight STM image
             if self.whicISO == 0:
-                dat = self.VaspPchg.isoHeight(zcut,
+                self.dat = self.VaspPchg.isoHeight(zcut,
                                               repeat=(self.repeat_x, self.repeat_y))
             # isoCurrent STM image
             else:
-                dat = self.VaspPchg.isoCurrent(zcut, pc=self.pc,
+                self.dat = self.VaspPchg.isoCurrent(zcut, pc=self.pc,
                                                repeat=(self.repeat_x, self.repeat_y))
 
-            self.axes.imshow(dat, # extent=exts,
+            self.axes.imshow(self.dat, # extent=exts,
                              origin='lower',
                              cmap=self.cmap,
                              interpolation='bicubic')
@@ -170,8 +177,10 @@ class Form(QMainWindow):
 
         self.loadButton = QPushButton("&Load")
         self.loadButton.clicked.connect(self.load_file)
-        self.saveButton = QPushButton("&Save Img")
-        self.saveButton.clicked.connect(self.save_img)
+        self.saveImgButton = QPushButton("Save &Img")
+        self.saveImgButton.clicked.connect(self.save_img)
+        self.saveDatButton = QPushButton("Save &Dat")
+        self.saveDatButton.clicked.connect(self.save_dat)
         self.cutButton = QPushButton("&Apply")
         self.cutButton.clicked.connect(self.on_show)
 
@@ -221,7 +230,8 @@ class Form(QMainWindow):
         self.right_vbox.addWidget(self.zcutToAngLabel, 5, 0, 1, 2)
         self.right_vbox.addWidget(self.loadButton, 9, 0)
         self.right_vbox.addWidget(self.cutButton, 9, 1)
-        self.right_vbox.addWidget(self.saveButton, 10, 0, 1, 2)
+        self.right_vbox.addWidget(self.saveImgButton, 10, 0)
+        self.right_vbox.addWidget(self.saveDatButton, 10, 1)
 
         # create info box
         self.createInfoGroup()
