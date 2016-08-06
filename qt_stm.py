@@ -80,6 +80,14 @@ class Form(QMainWindow):
         self.repeat_x = 1
         self.repeat_y = 1
 
+        self.selected_cmaps = ['hot', 'hot_r',
+                               'Blues', 'Blues_r',
+                               'bwr', 'bwr_r',
+                               'coolwarm', 'coolwarm_r',
+                               'seismic', 'seismic_r',
+                               'RdBu', 'RdBu_r']
+            
+
         # 0 for IsoHeight and 1 for IsoCurrent STM image
         self.whicISO = 0
 
@@ -166,7 +174,7 @@ class Form(QMainWindow):
 
         self.canvas.draw()
 
-    def createParaPart(self):
+    def createPlotPart(self):
         self.fig = Figure((4.5, 4.5), dpi=self.dpi)
         self.fig.subplots_adjust(left=0.05, right=0.95,
                                  bottom=0.05, top=0.95)
@@ -176,11 +184,11 @@ class Form(QMainWindow):
         self.axes = self.fig.add_subplot(111)
         self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
         
-        self.Para_vbox = QVBoxLayout()
-        self.Para_vbox.addWidget(self.canvas)
-        self.Para_vbox.addWidget(self.mpl_toolbar)
+        self.Plot_vbox = QVBoxLayout()
+        self.Plot_vbox.addWidget(self.canvas)
+        self.Plot_vbox.addWidget(self.mpl_toolbar)
     
-    def createPlotPart(self):
+    def createParaPart(self):
 
         self.loadButton = QPushButton("&Load")
         self.loadButton.clicked.connect(self.load_file)
@@ -205,6 +213,11 @@ class Form(QMainWindow):
         self.zcutToAngLabel.setMinimumHeight(25)
         self.zcutToAngLabel.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
         self.zcutToAngLabel.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
+
+        self.cmapLabel = QLabel('Cmap')
+        self.cmapComboBox = QComboBox()
+        self.cmapComboBox.addItems(self.selected_cmaps)
+        self.cmapComboBox.currentIndexChanged.connect(self.cmapChanged)
         
         self.pcLabel = QLabel("Percentage =")
         self.pcSpinBox = QSpinBox()
@@ -221,7 +234,8 @@ class Form(QMainWindow):
         repeatXSpinBox.valueChanged.connect(self.rx_changed) 
         repeatYSpinBox.valueChanged.connect(self.ry_changed) 
 
-        for lab in [repeatXLabel, repeatYLabel, self.cutLabel, self.pcLabel]:
+        for lab in [repeatXLabel, repeatYLabel, self.cutLabel, self.pcLabel,
+                    self.cmapLabel]:
             lab.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
 
         self.inputGroup = QGroupBox('Input')
@@ -235,7 +249,9 @@ class Form(QMainWindow):
         inputGridBox.addWidget(self.cutSpinBox, 3, 1)
         inputGridBox.addWidget(self.pcLabel, 4, 0)
         inputGridBox.addWidget(self.pcSpinBox, 4, 1)
-        inputGridBox.addWidget(self.zcutToAngLabel, 5, 0, 1, 2)
+        inputGridBox.addWidget(self.zcutToAngLabel, 6, 0, 1, 2)
+        inputGridBox.addWidget(self.cmapLabel, 5, 0)
+        inputGridBox.addWidget(self.cmapComboBox, 5, 1)
         self.inputGroup.setLayout(inputGridBox)
 
         self.actionButton = QGridLayout()
@@ -246,13 +262,13 @@ class Form(QMainWindow):
 
         # create info box
         self.createInfoGroup()
-        # self.Plot_vbox.addLayout(self.InfoBox, 6, 0, 3, 2)
+        # self.Para_vbox.addLayout(self.InfoBox, 6, 0, 3, 2)
 
-        self.Plot_vbox = QVBoxLayout()
-        self.Plot_vbox.addWidget(self.inputGroup)
-        self.Plot_vbox.addWidget(self.InfoGroup)
-        self.Plot_vbox.addStretch(1)
-        self.Plot_vbox.addLayout(self.actionButton)
+        self.Para_vbox = QVBoxLayout()
+        self.Para_vbox.addWidget(self.inputGroup)
+        self.Para_vbox.addWidget(self.InfoGroup)
+        self.Para_vbox.addStretch(1)
+        self.Para_vbox.addLayout(self.actionButton)
 
 
     def createInfoGroup(self):
@@ -297,8 +313,8 @@ class Form(QMainWindow):
 
         # put together
         hbox = QHBoxLayout()
-        hbox.addLayout(self.Plot_vbox)
         hbox.addLayout(self.Para_vbox)
+        hbox.addLayout(self.Plot_vbox)
         self.main_frame.setLayout(hbox)
 
         self.setCentralWidget(self.main_frame)
@@ -317,6 +333,10 @@ class Form(QMainWindow):
         self.pc = pc
         if self.whicISO == 1:
             self.GenerateData()
+
+    def cmapChanged(self, ii):
+        self.cmap = self.selected_cmaps[ii]
+        self.on_show()
 
     def zcutChanged(self, zcut):
         self.zcut = zcut
