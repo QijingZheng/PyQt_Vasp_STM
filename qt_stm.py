@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 ################################################################################
 import sys, os
 import numpy as np
@@ -34,14 +33,15 @@ class vaspParchg(VaspChargeDensity):
         self.zmax_pos = self.poscar.positions[:,-1].max()
         self.zmax_ind = int(self.zmax_pos / self.c * self.NZ) + 1
 
-    def isoHeight(self, zcut, repeat=(1, 1)):
+    def isoHeight(self, zcut):
         """ Return the iso-height cut the charge density """
 
         img = self.chg_n[:,:,zcut]
 
-        return np.tile(img, repeat).T
+        # return np.tile(img, repeat).T
+        return img
 
-    def isoCurrent(self, zcut, repeat=(1, 1), pc=None, ext=0.15):
+    def isoCurrent(self, zcut, pc=None, ext=0.15):
         """ Return the iso-current cut the charge density """
 
         zext = int(self.NZ * ext)
@@ -52,7 +52,6 @@ class vaspParchg(VaspChargeDensity):
 
         if pc is None:
             c = np.average(self.chg_n[:,:, zcut])
-            print "kaka"
         else:
             tmp = np.zeros(zcut_max - zcut_min)
             for ii in range(tmp.size):
@@ -62,8 +61,9 @@ class vaspParchg(VaspChargeDensity):
         # height of iso-current 
         img = np.argmin(np.abs(self.chg_n[:,:,zcut_min:zcut_max] - c), axis=2)
 
-        img_ext =  np.tile(img, repeat)
-        return img_ext.T
+        return img
+        # img_ext =  np.tile(img, repeat)
+        # return img_ext.T
 
 ################################################################################
 class Form(QMainWindow):
@@ -100,66 +100,73 @@ class Form(QMainWindow):
             self.VaspPchg = vaspParchg(self.filename)
             self.zcut = self.VaspPchg.zmax_ind
             self.cutSpinBox.setValue(self.zcut)
-            self.on_show()
             for irow in range(3):
                 self.InfoLabs[irow][0].setText(u'%d' % self.VaspPchg.ngrid[irow])
                 self.InfoLabs[irow][1].setText(u'%.2f \u212B' % self.VaspPchg.abc[irow])
+            self.GenerateData()
 
     def save_img(self):
-        self.imgName = QFileDialog.getSaveFileName(self,
-                       'Save Image:', './untitled.png', '')
-        if self.imgName:
-            self.fig.savefig(str(self.imgName), dpi=self.dpi)
+        if self.whicISO == 0:
+            defaultImgName = './STM_H_%d.png' % self.zcut
+        else:
+            defaultImgName = './STM_C_%d.png' % self.zcut
+
+        imgName = QFileDialog.getSaveFileName(self,
+                       'Save Image:', defaultImgName, '')
+        if imgName:
+            self.fig.savefig(str(imgName), dpi=self.dpi)
 
     def save_dat(self):
-        self.datName = QFileDialog.getSaveFileName(self,
-                       'Save Data:', './untitled.dat', '')
-        if self.datName and self.dat:
-            np.savetxt(str(self.datName), self.dat)
+        if self.whicISO == 0:
+            defaultDatName = './STM_H_%d_%dx%d.npy' % (self.zcut, self.repeat_x, self.repeat_y)
+        else:
+            defaultDatName = './STM_C_%d_%dx%d.npy' % (self.zcut, self.repeat_x, self.repeat_y)
+        datName = QFileDialog.getSaveFileName(self,
+                       'Save Data:', defaultDatName, '')
+
+        if datName and self.STMData:
+            xx = np.vstack((self.STMXCoord[np.newaxis, ...],
+                            self.STMYCoord[np.newaxis, ...],
+                            self.STMData[np.newaxis, ...]))
+            np.savetxt(str(datName), self.dat)
     
-    def on_show(self):
-        self.axes.clear()        
-        self.axes.set_xticks([])
-        self.axes.set_yticks([])
-
+    def GenerateData(self):
+         
         if self.VaspPchg:
-            zcut = self.zcut
-
             # isoHeight STM image
             if self.whicISO == 0:
-                self.dat = self.VaspPchg.isoHeight(zcut,
-                                              repeat=(self.repeat_x, self.repeat_y))
+                dat = self.VaspPchg.isoHeight(self.zcut)
             # isoCurrent STM image
             else:
-                self.dat = self.VaspPchg.isoCurrent(zcut, pc=self.pc,
-                                               repeat=(self.repeat_x, self.repeat_y))
+                dat = self.VaspPchg.isoCurrent(self.zcut, pc=self.pc)
 
-            self.axes.imshow(self.dat, # extent=exts,
-                             origin='lower',
-                             cmap=self.cmap,
-                             interpolation='bicubic')
+            NX = self.VaspPchg.NX
+            NY = self.VaspPchg.NY
+            a  = (self.VaspPchg.poscar.cell[0,0] + \
+                  self.VaspPchg.poscar.cell[0,1] * 1j) / NX
+            b  = (self.VaspPchg.poscar.cell[1,0] + \
+                  self.VaspPchg.poscar.cell[1,1] * 1j) / NY
+            gx, gy = np.mgrid[0:NX * self.repeat_x, 0:NY*self.repeat_y]
+            tmp = gx * a + gy * b
+            self.STMXCoord = np.real(tmp)
+            self.STMYCoord = np.imag(tmp)
+            self.STMData   = np.tile(dat, (self.repeat_x, self.repeat_y))
+
+            self.on_show()
+
+    def on_show(self):
+        self.axes.clear()        
+        self.axes.set_aspect('equal')
+        self.axes.axis('off')
+
+        if self.VaspPchg:
+            self.axes.pcolormesh(self.STMXCoord, self.STMYCoord, self.STMData,
+                                 cmap=self.cmap,
+                                 )
 
         self.canvas.draw()
 
-    def zcutChanged(self, zcut):
-        self.zcut = zcut
-        self.pc = None
-        if self.VaspPchg:
-            txt = u'Zm = %.2f \u212B;   Zn =' % self.VaspPchg.zmax_pos
-            self.zcutToAngLabel.setText(txt + u'<span style="color: #FF0000; font-weight: bold;"> %.2f &#8491;</span>' %
-                                        (float(self.zcut) / self.VaspPchg.NZ * self.VaspPchg.c))
-            self.on_show()
-
-    def pcChanged(self, pc):
-        self.pc = pc
-        if self.whicISO == 1:
-            self.on_show()
-
-    def isoChanged(self, ii):
-        self.whicISO = ii
-        self.on_show()
-
-    def createLeftPart(self):
+    def createParaPart(self):
         self.fig = Figure((4.5, 4.5), dpi=self.dpi)
         self.fig.subplots_adjust(left=0.05, right=0.95,
                                  bottom=0.05, top=0.95)
@@ -169,11 +176,11 @@ class Form(QMainWindow):
         self.axes = self.fig.add_subplot(111)
         self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
         
-        self.left_vbox = QVBoxLayout()
-        self.left_vbox.addWidget(self.canvas)
-        self.left_vbox.addWidget(self.mpl_toolbar)
+        self.Para_vbox = QVBoxLayout()
+        self.Para_vbox.addWidget(self.canvas)
+        self.Para_vbox.addWidget(self.mpl_toolbar)
     
-    def createRightPart(self):
+    def createPlotPart(self):
 
         self.loadButton = QPushButton("&Load")
         self.loadButton.clicked.connect(self.load_file)
@@ -182,7 +189,7 @@ class Form(QMainWindow):
         self.saveDatButton = QPushButton("Save &Dat")
         self.saveDatButton.clicked.connect(self.save_dat)
         self.cutButton = QPushButton("&Apply")
-        self.cutButton.clicked.connect(self.on_show)
+        self.cutButton.clicked.connect(self.GenerateData)
 
         self.isoComboBox = QComboBox()
         self.isoComboBox.addItem('Iso Height STM')
@@ -195,9 +202,9 @@ class Form(QMainWindow):
         self.cutSpinBox.setSingleStep(1)
         self.cutSpinBox.valueChanged.connect(self.zcutChanged)
         self.zcutToAngLabel = QLabel()
-        self.zcutToAngLabel.setMaximumHeight(25)
+        self.zcutToAngLabel.setMinimumHeight(25)
         self.zcutToAngLabel.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
-        # self.zcutToAngLabel.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
+        self.zcutToAngLabel.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
         
         self.pcLabel = QLabel("Percentage =")
         self.pcSpinBox = QSpinBox()
@@ -217,31 +224,41 @@ class Form(QMainWindow):
         for lab in [repeatXLabel, repeatYLabel, self.cutLabel, self.pcLabel]:
             lab.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
 
-        self.right_vbox = QGridLayout()
-        self.right_vbox.addWidget(self.isoComboBox, 0, 0, 1, 2)
-        self.right_vbox.addWidget(repeatXLabel, 1, 0)
-        self.right_vbox.addWidget(repeatYLabel, 2, 0)
-        self.right_vbox.addWidget(repeatXSpinBox, 1, 1)
-        self.right_vbox.addWidget(repeatYSpinBox, 2, 1)
-        self.right_vbox.addWidget(self.cutLabel, 3, 0)
-        self.right_vbox.addWidget(self.cutSpinBox, 3, 1)
-        self.right_vbox.addWidget(self.pcLabel, 4, 0)
-        self.right_vbox.addWidget(self.pcSpinBox, 4, 1)
-        self.right_vbox.addWidget(self.zcutToAngLabel, 5, 0, 1, 2)
-        self.right_vbox.addWidget(self.loadButton, 9, 0)
-        self.right_vbox.addWidget(self.cutButton, 9, 1)
-        self.right_vbox.addWidget(self.saveImgButton, 10, 0)
-        self.right_vbox.addWidget(self.saveDatButton, 10, 1)
+        self.inputGroup = QGroupBox('Input')
+        inputGridBox  = QGridLayout()
+        inputGridBox.addWidget(self.isoComboBox, 0, 0, 1, 2)
+        inputGridBox.addWidget(repeatXLabel, 1, 0)
+        inputGridBox.addWidget(repeatYLabel, 2, 0)
+        inputGridBox.addWidget(repeatXSpinBox, 1, 1)
+        inputGridBox.addWidget(repeatYSpinBox, 2, 1)
+        inputGridBox.addWidget(self.cutLabel, 3, 0)
+        inputGridBox.addWidget(self.cutSpinBox, 3, 1)
+        inputGridBox.addWidget(self.pcLabel, 4, 0)
+        inputGridBox.addWidget(self.pcSpinBox, 4, 1)
+        inputGridBox.addWidget(self.zcutToAngLabel, 5, 0, 1, 2)
+        self.inputGroup.setLayout(inputGridBox)
+
+        self.actionButton = QGridLayout()
+        self.actionButton.addWidget(self.loadButton, 0, 0)
+        self.actionButton.addWidget(self.cutButton, 0, 1)
+        self.actionButton.addWidget(self.saveImgButton, 1, 0)
+        self.actionButton.addWidget(self.saveDatButton, 1, 1)
 
         # create info box
         self.createInfoGroup()
-        self.right_vbox.addLayout(self.InfoBox, 6, 0, 3, 2)
+        # self.Plot_vbox.addLayout(self.InfoBox, 6, 0, 3, 2)
+
+        self.Plot_vbox = QVBoxLayout()
+        self.Plot_vbox.addWidget(self.inputGroup)
+        self.Plot_vbox.addWidget(self.InfoGroup)
+        self.Plot_vbox.addStretch(1)
+        self.Plot_vbox.addLayout(self.actionButton)
 
 
     def createInfoGroup(self):
 
-        self.InfoBox = QVBoxLayout()
-        self.InfoGroup = QGroupBox("Info")
+        # self.InfoBox = QVBoxLayout()
+        self.InfoGroup = QGroupBox("Grid")
         self.infoGrid = QGridLayout()
         self.infoGrid.setVerticalSpacing(10)
         InfoTags = [["NX =","  a ="],
@@ -255,34 +272,33 @@ class Form(QMainWindow):
                 self.infoGrid.addWidget(QLabel(InfoTags[irow][icol]),
                                         irow, icol*2)
                 label = QLabel()
-                # label.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
+                label.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
                 label.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
                 if icol == 0:
                     label.setMinimumWidth(30)
                 else:
                     label.setMinimumWidth(55)
-                label.setMaximumHeight(30)
+                label.setMinimumHeight(25)
                 self.infoGrid.addWidget(label, irow, icol*2+1)
                 tmp += [label]
             self.InfoLabs += [tmp]
         self.InfoGroup.setLayout(self.infoGrid)
-
-        self.InfoBox.addWidget(self.InfoGroup)
-        self.InfoBox.addStretch(1)
+        # self.InfoBox.addWidget(self.InfoGroup)
+        # self.InfoBox.addStretch(1)
 
     def create_main_frame(self):
         self.main_frame = QWidget()
         # self.main_frame.resize(550, 420)
         
-        # left part
-        self.createLeftPart()
-        # right part
-        self.createRightPart()
+        # Para part
+        self.createParaPart()
+        # Plot part
+        self.createPlotPart()
 
         # put together
         hbox = QHBoxLayout()
-        hbox.addLayout(self.left_vbox)
-        hbox.addLayout(self.right_vbox)
+        hbox.addLayout(self.Plot_vbox)
+        hbox.addLayout(self.Para_vbox)
         self.main_frame.setLayout(hbox)
 
         self.setCentralWidget(self.main_frame)
@@ -297,6 +313,25 @@ class Form(QMainWindow):
     def ry_changed(self, ii):
         self.repeat_y = ii
 
+    def pcChanged(self, pc):
+        self.pc = pc
+        if self.whicISO == 1:
+            self.GenerateData()
+
+    def zcutChanged(self, zcut):
+        self.zcut = zcut
+        self.pc = None
+        if self.VaspPchg:
+            txt = u'Zm = %.2f \u212B;   Zn =' % self.VaspPchg.zmax_pos
+            self.zcutToAngLabel.setText(txt + u'<span style="color: #FF0000; font-weight: bold;"> %.2f &#8491;</span>' %
+                                        (float(self.zcut) / self.VaspPchg.NZ * self.VaspPchg.c))
+            self.GenerateData()
+
+    def isoChanged(self, ii):
+        self.whicISO = ii
+        self.GenerateData()
+
+################################################################################
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     form = Form()
