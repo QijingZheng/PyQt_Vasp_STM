@@ -79,7 +79,8 @@ class Form(QMainWindow):
         self.dat = None
         self.repeat_x = 1
         self.repeat_y = 1
-
+        self.vmin = None
+        self.vmax = None
         self.selected_cmaps = ['hot', 'hot_r',
                                'Blues', 'Blues_r',
                                'bwr', 'bwr_r',
@@ -100,6 +101,13 @@ class Form(QMainWindow):
         self.setWindowTitle('PyQt & matplotlib demo: STM Simulation')
         # self.resize(700, 420)
 
+    def updateZV(self):
+
+        zmsg = u'Zm = %.2f \u212B;   Zn = %.2f \u212B' % \
+               (self.VaspPchg.zmax_pos, (float(self.zcut) / self.VaspPchg.NZ * self.VaspPchg.c))
+        vmsg = u'vmin = %.2E;   vmax = %.2E' % (self.STMData.min(), self.STMData.max())
+        self.statusBar.showMessage(zmsg + '; ' + vmsg)
+
     def load_file(self):
         self.filename = QFileDialog.getOpenFileName(self,
             'Open a data file', '.', '')
@@ -112,6 +120,12 @@ class Form(QMainWindow):
                 self.InfoLabs[irow][0].setText(u'%d' % self.VaspPchg.ngrid[irow])
                 self.InfoLabs[irow][1].setText(u'%.2f \u212B' % self.VaspPchg.abc[irow])
             self.GenerateData()
+            # self.statusBar.showMessage('Loading file completed!', 1000)
+            # self.vminLineEdit.setText('%.1E' % self.STMData.min())
+            # self.vmaxLineEdit.setText('%.1E' % self.STMData.max())
+
+            self.updateZV()
+
 
     def save_img(self):
         if self.whicISO == 0:
@@ -170,12 +184,14 @@ class Form(QMainWindow):
         if self.VaspPchg:
             self.axes.pcolormesh(self.STMXCoord, self.STMYCoord, self.STMData,
                                  cmap=self.cmap,
+                                 vmin=self.vmin,
+                                 vmax=self.vmax
                                  )
 
         self.canvas.draw()
 
     def createPlotPart(self):
-        self.fig = Figure((4.5, 4.5), dpi=self.dpi)
+        self.fig = Figure((6.0, 6.0), dpi=self.dpi)
         self.fig.subplots_adjust(left=0.05, right=0.95,
                                  bottom=0.05, top=0.95)
         self.canvas = FigureCanvas(self.fig)
@@ -200,33 +216,30 @@ class Form(QMainWindow):
         self.cutButton.clicked.connect(self.GenerateData)
 
         self.isoComboBox = QComboBox()
-        self.isoComboBox.addItem('Iso Height STM')
-        self.isoComboBox.addItem('Iso Current STM')
+        # self.isoComboBox.setMaximumWidth(80)
+        self.isoComboBox.addItems(['Iso Height',
+                                   'Iso Current'])
         self.isoComboBox.currentIndexChanged.connect(self.isoChanged)
 
-        self.cutLabel = QLabel("ZCUT =")
+        self.cutLabel = QLabel("Zc")
         self.cutSpinBox = QSpinBox()
         self.cutSpinBox.setRange(0, 1500)
         self.cutSpinBox.setSingleStep(1)
         self.cutSpinBox.valueChanged.connect(self.zcutChanged)
-        self.zcutToAngLabel = QLabel()
-        self.zcutToAngLabel.setMinimumHeight(25)
-        self.zcutToAngLabel.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
-        self.zcutToAngLabel.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
 
-        self.cmapLabel = QLabel('Cmap')
+        self.cmapLabel = QLabel('Cm')
         self.cmapComboBox = QComboBox()
         self.cmapComboBox.addItems(self.selected_cmaps)
         self.cmapComboBox.currentIndexChanged.connect(self.cmapChanged)
         
-        self.pcLabel = QLabel("Percentage =")
+        self.pcLabel = QLabel("Pc")
         self.pcSpinBox = QSpinBox()
         self.pcSpinBox.setRange(0, 99)
         self.pcSpinBox.setSingleStep(1)
         self.pcSpinBox.valueChanged.connect(self.pcChanged)
 
-        repeatXLabel = QLabel('Repeat X')
-        repeatYLabel = QLabel('Repeat Y')
+        repeatXLabel = QLabel('Px')
+        repeatYLabel = QLabel('Py')
         repeatXSpinBox = QSpinBox()
         repeatYSpinBox = QSpinBox()
         repeatXSpinBox.setRange(1, 10)
@@ -234,24 +247,48 @@ class Form(QMainWindow):
         repeatXSpinBox.valueChanged.connect(self.rx_changed) 
         repeatYSpinBox.valueChanged.connect(self.ry_changed) 
 
+        vminLabel = QLabel('min')
+        self.vminLineEdit = QLineEdit()
+        # self.vminLineEdit.setFixedWidth(60)
+        vmaxLabel = QLabel('max')
+        self.vmaxLineEdit = QLineEdit()
+        font = QFont()
+        font.setPointSize(10)
+        self.vminLineEdit.setFont(font)
+        self.vmaxLineEdit.setFont(font)
+        self.vminLineEdit.textChanged.connect(self.vminChanged)
+        self.vmaxLineEdit.textChanged.connect(self.vmaxChanged)
+        # self.vmaxLineEdit.setFixedWidth(60)
+
         for lab in [repeatXLabel, repeatYLabel, self.cutLabel, self.pcLabel,
-                    self.cmapLabel]:
+                    self.cmapLabel, vminLabel, vmaxLabel]:
             lab.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
+            lab.setFixedWidth(30)
+            lab.setFrameStyle(QFrame.Panel|QFrame.Raised)
+
+        # for widget in [repeatXSpinBox, repeatYSpinBox, self.cutSpinBox,
+        #                self.pcSpinBox, self.cmapComboBox]:
+        #     widget.setFixedWidth(60)
 
         self.inputGroup = QGroupBox('Input')
+        self.inputGroup.setMaximumSize(QSize(220, 16777215))
         inputGridBox  = QGridLayout()
-        inputGridBox.addWidget(self.isoComboBox, 0, 0, 1, 2)
+        inputGridBox.addWidget(self.isoComboBox, 0, 2, 1, 2)
+        # inputGridBox.addWidget(self.isoComboBox, 0, 0)
         inputGridBox.addWidget(repeatXLabel, 1, 0)
-        inputGridBox.addWidget(repeatYLabel, 2, 0)
+        inputGridBox.addWidget(repeatYLabel, 1, 2)
         inputGridBox.addWidget(repeatXSpinBox, 1, 1)
-        inputGridBox.addWidget(repeatYSpinBox, 2, 1)
+        inputGridBox.addWidget(repeatYSpinBox, 1, 3)
         inputGridBox.addWidget(self.cutLabel, 3, 0)
         inputGridBox.addWidget(self.cutSpinBox, 3, 1)
-        inputGridBox.addWidget(self.pcLabel, 4, 0)
-        inputGridBox.addWidget(self.pcSpinBox, 4, 1)
-        inputGridBox.addWidget(self.zcutToAngLabel, 6, 0, 1, 2)
-        inputGridBox.addWidget(self.cmapLabel, 5, 0)
-        inputGridBox.addWidget(self.cmapComboBox, 5, 1)
+        inputGridBox.addWidget(self.pcLabel, 3, 2)
+        inputGridBox.addWidget(self.pcSpinBox, 3, 3)
+        inputGridBox.addWidget(self.cmapLabel, 4, 2)
+        inputGridBox.addWidget(self.cmapComboBox, 4, 3)
+        inputGridBox.addWidget(vminLabel, 5, 0)
+        inputGridBox.addWidget(vmaxLabel, 5, 2)
+        inputGridBox.addWidget(self.vminLineEdit, 5, 1)
+        inputGridBox.addWidget(self.vmaxLineEdit, 5, 3)
         self.inputGroup.setLayout(inputGridBox)
 
         self.actionButton = QGridLayout()
@@ -288,13 +325,13 @@ class Form(QMainWindow):
                 self.infoGrid.addWidget(QLabel(InfoTags[irow][icol]),
                                         irow, icol*2)
                 label = QLabel()
-                label.setFrameStyle(QFrame.StyledPanel|QFrame.Sunken)
+                label.setFrameStyle(QFrame.Panel|QFrame.Sunken)
                 label.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
                 if icol == 0:
                     label.setMinimumWidth(30)
                 else:
                     label.setMinimumWidth(55)
-                label.setMinimumHeight(25)
+                label.setMinimumHeight(20)
                 self.infoGrid.addWidget(label, irow, icol*2+1)
                 tmp += [label]
             self.InfoLabs += [tmp]
@@ -310,18 +347,28 @@ class Form(QMainWindow):
         self.createParaPart()
         # Plot part
         self.createPlotPart()
+        # Vertical Line
+        Vline = QFrame()
+        Vline.setFrameShape(QFrame.VLine)
+        Vline.setFrameShadow(QFrame.Sunken)
+        # Vline.setObjectName(_fromUtf8("line"))
 
         # put together
         hbox = QHBoxLayout()
         hbox.addLayout(self.Para_vbox)
+        hbox.addWidget(Vline)
         hbox.addLayout(self.Plot_vbox)
         self.main_frame.setLayout(hbox)
 
         self.setCentralWidget(self.main_frame)
     
     def create_status_bar(self):
-        self.status_text = QLabel("Please load a data file")
-        self.statusBar().addWidget(self.status_text, 1)
+        self.statusBar = QStatusBar()
+        self.setStatusBar(self.statusBar)
+
+        self.statusBar.showMessage('Please load a data file!')
+        # self.status_text = QLabel("Please load a data file")
+        # self.statusBar().addWidget(self.status_text, 1)
 
     def rx_changed(self, ii):
         self.repeat_x = ii
@@ -331,8 +378,25 @@ class Form(QMainWindow):
 
     def pcChanged(self, pc):
         self.pc = pc
+        self.vmin = None
+        self.vmax = None
+        
         if self.whicISO == 1:
             self.GenerateData()
+
+    def vminChanged(self, xx):
+        try:
+            self.vmin = float(str(xx))
+        except ValueError:
+            self.vmin = None
+        self.on_show()
+
+    def vmaxChanged(self, xx):
+        try:
+            self.vmax = float(str(xx))
+        except ValueError:
+            self.vmax = None
+        self.on_show()
 
     def cmapChanged(self, ii):
         self.cmap = self.selected_cmaps[ii]
@@ -341,10 +405,11 @@ class Form(QMainWindow):
     def zcutChanged(self, zcut):
         self.zcut = zcut
         self.pc = None
+        self.vmin = None
+        self.vmax = None
+
         if self.VaspPchg:
-            txt = u'Zm = %.2f \u212B;   Zn =' % self.VaspPchg.zmax_pos
-            self.zcutToAngLabel.setText(txt + u'<span style="color: #FF0000; font-weight: bold;"> %.2f &#8491;</span>' %
-                                        (float(self.zcut) / self.VaspPchg.NZ * self.VaspPchg.c))
+            self.updateZV()
             self.GenerateData()
 
     def isoChanged(self, ii):
