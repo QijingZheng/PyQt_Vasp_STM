@@ -106,7 +106,7 @@ class Form(QMainWindow):
         zmsg = u'Zm = %.2f \u212B;   Zn = %.2f \u212B' % \
                (self.VaspPchg.zmax_pos, (float(self.zcut) / self.VaspPchg.NZ * self.VaspPchg.c))
         vmsg = u'vmin = %.2E;   vmax = %.2E' % (self.STMData.min(), self.STMData.max())
-        self.statusBar.showMessage(zmsg + '; ' + vmsg)
+        self.statusBar.showMessage(zmsg + ';    ' + vmsg)
 
     def load_file(self):
         self.filename = QFileDialog.getOpenFileName(self,
@@ -116,14 +116,11 @@ class Form(QMainWindow):
             self.VaspPchg = vaspParchg(self.filename)
             self.zcut = self.VaspPchg.zmax_ind
             self.cutSpinBox.setValue(self.zcut)
+            self.cutSpinBox.setMaximum(self.VaspPchg.NZ)
             for irow in range(3):
                 self.InfoLabs[irow][0].setText(u'%d' % self.VaspPchg.ngrid[irow])
                 self.InfoLabs[irow][1].setText(u'%.2f \u212B' % self.VaspPchg.abc[irow])
             self.GenerateData()
-            # self.statusBar.showMessage('Loading file completed!', 1000)
-            # self.vminLineEdit.setText('%.1E' % self.STMData.min())
-            # self.vmaxLineEdit.setText('%.1E' % self.STMData.max())
-
             self.updateZV()
 
 
@@ -256,8 +253,10 @@ class Form(QMainWindow):
         font.setPointSize(10)
         self.vminLineEdit.setFont(font)
         self.vmaxLineEdit.setFont(font)
-        self.vminLineEdit.textChanged.connect(self.vminChanged)
-        self.vmaxLineEdit.textChanged.connect(self.vmaxChanged)
+        # self.vminLineEdit.textChanged.connect(self.vminChanged)
+        # self.vmaxLineEdit.textChanged.connect(self.vmaxChanged)
+        self.vminLineEdit.returnPressed.connect(self.vminChanged)
+        self.vmaxLineEdit.returnPressed.connect(self.vmaxChanged)
         # self.vmaxLineEdit.setFixedWidth(60)
 
         for lab in [repeatXLabel, repeatYLabel, self.cutLabel, self.pcLabel,
@@ -384,19 +383,29 @@ class Form(QMainWindow):
         if self.whicISO == 1:
             self.GenerateData()
 
-    def vminChanged(self, xx):
+    # def vminChanged(self, xx):
+    def vminChanged(self):
+        xx = self.vminLineEdit.text()
+
         try:
             self.vmin = float(str(xx))
         except ValueError:
             self.vmin = None
-        self.on_show()
 
-    def vmaxChanged(self, xx):
+        if (self.vmax is not None) and (self.vmin < self.vmax):
+            self.on_show()
+
+    # def vmaxChanged(self, xx):
+    def vmaxChanged(self):
+        xx = self.vmaxLineEdit.text()
+
         try:
             self.vmax = float(str(xx))
         except ValueError:
             self.vmax = None
-        self.on_show()
+
+        if (self.vmin is not None) and (self.vmin < self.vmax):
+            self.on_show()
 
     def cmapChanged(self, ii):
         self.cmap = self.selected_cmaps[ii]
@@ -408,9 +417,12 @@ class Form(QMainWindow):
         self.vmin = None
         self.vmax = None
 
+        self.vminLineEdit.clear()
+        self.vmaxLineEdit.clear()
+
         if self.VaspPchg:
-            self.updateZV()
             self.GenerateData()
+            self.updateZV()
 
     def isoChanged(self, ii):
         self.whicISO = ii
