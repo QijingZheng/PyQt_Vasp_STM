@@ -76,7 +76,6 @@ class Form(QMainWindow):
         self.pc = None
         self.cmap = 'hot'
         self.dpi = 300
-        self.dat = None
         self.repeat_x = 1
         self.repeat_y = 1
         self.vmin = None
@@ -147,7 +146,7 @@ class Form(QMainWindow):
             xx = np.vstack((self.STMXCoord[np.newaxis, ...],
                             self.STMYCoord[np.newaxis, ...],
                             self.STMData[np.newaxis, ...]))
-            np.savetxt(str(datName), self.dat)
+            np.savetxt(str(datName), xx)
     
     def GenerateData(self):
          
@@ -175,8 +174,8 @@ class Form(QMainWindow):
 
     def on_show(self):
         self.axes.clear()        
-        self.axes.set_aspect('equal')
-        self.axes.axis('off')
+        # self.axes.set_aspect('equal')
+        # self.axes.axis('off')
 
         if self.VaspPchg:
             self.axes.pcolormesh(self.STMXCoord, self.STMYCoord, self.STMData,
@@ -195,6 +194,8 @@ class Form(QMainWindow):
         self.canvas.setParent(self.main_frame)
         
         self.axes = self.fig.add_subplot(111)
+        self.axes.set_aspect('equal')
+        self.axes.axis('off')
         self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
         
         self.Plot_vbox = QVBoxLayout()
