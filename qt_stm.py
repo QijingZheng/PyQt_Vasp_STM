@@ -175,9 +175,14 @@ class Form(QMainWindow):
     def on_show(self):
         self.axes.clear()        
         # self.axes.set_aspect('equal')
-        # self.axes.axis('off')
+        self.axes.axis('off')
 
         if self.VaspPchg:
+            xmin, xmax = self.STMXCoord.min(), self.STMXCoord.max()
+            ymin, ymax = self.STMYCoord.min(), self.STMYCoord.max()
+            self.axes.set_xlim(xmin, xmax)
+            self.axes.set_ylim(ymin, ymax)
+
             self.axes.pcolormesh(self.STMXCoord, self.STMYCoord, self.STMData,
                                  cmap=self.cmap,
                                  vmin=self.vmin,
