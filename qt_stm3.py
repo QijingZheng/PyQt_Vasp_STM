@@ -17,11 +17,11 @@ from ase.calculators.vasp import VaspChargeDensity
 ################################################################################
 mpl.rcParams['axes.linewidth'] = 0.0
 
+FNAME = None
+
 ################################################################################
 class vaspParchg(VaspChargeDensity):
     def __init__(self, inputFile='PARCHG'):
-        # print(inputFile)
-        # exit(1)
         super(vaspParchg, self).__init__(inputFile)
 
         self.chg_n = np.asarray(self.chg)[0]
@@ -102,6 +102,9 @@ class Form(QMainWindow):
 
         self.setWindowTitle('PyQt & matplotlib demo: STM Simulation')
         # self.resize(700, 420)
+        if None != FNAME:
+            self.filename = FNAME
+            self.load_file()
 
     def updateZV(self):
 
@@ -111,8 +114,9 @@ class Form(QMainWindow):
         self.statusBar.showMessage(zmsg + ';    ' + vmsg)
 
     def load_file(self):
-        self.filename, _filter = QFileDialog.getOpenFileName(self,
-            'Open a data file', '.', '')
+        if None == self.filename:
+            self.filename, _filter = QFileDialog.getOpenFileName(self,
+                'Open a data file', '.', '')
         
         if self.filename:
             self.VaspPchg = vaspParchg(self.filename)
@@ -439,6 +443,9 @@ class Form(QMainWindow):
 
 ################################################################################
 if __name__ == "__main__":
+    if 2 == len(sys.argv) and "" != sys.argv[1]:
+        FNAME = sys.argv[1]
+    print(sys.argv)
     app = QApplication(sys.argv)
     form = Form()
     form.show()
