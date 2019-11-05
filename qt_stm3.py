@@ -128,6 +128,7 @@ class Form(QMainWindow):
                 self.InfoLabs[irow][1].setText(u'%.2f \u212B' % self.VaspPchg.abc[irow])
             self.GenerateData()
             self.updateZV()
+        self.filename = None
 
 
     def save_img(self):
