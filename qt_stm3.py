@@ -128,31 +128,32 @@ class Form(QMainWindow):
                 self.InfoLabs[irow][1].setText(u'%.2f \u212B' % self.VaspPchg.abc[irow])
             self.GenerateData()
             self.updateZV()
+        self.filename = None
 
 
     def save_img(self):
         if self.whicISO == 0:
-            defaultImgName = './STM_H_%d.png' % self.zcut
+            defaultImgName = f'./STM_H_{self.zcut}.png'
         else:
-            defaultImgName = './STM_C_%d.png' % self.zcut
+            defaultImgName = f'./STM_C_{self.zcut}.png'
 
-        imgName = QFileDialog.getSaveFileName(self,
+        imgName, _ = QFileDialog.getSaveFileName(self,
                        'Save Image:', defaultImgName, '')
         if imgName:
             self.fig.savefig(str(imgName), dpi=self.dpi)
 
     def save_dat(self):
         if self.whicISO == 0:
-            defaultDatName = './STM_H_%d_%dx%d.npy' % (self.zcut, self.repeat_x, self.repeat_y)
+            defaultDatName = './STM_H_{}_{}x{}.npy'.format(self.zcut, self.repeat_x, self.repeat_y)
         else:
-            defaultDatName = './STM_C_%d_%dx%d.npy' % (self.zcut, self.repeat_x, self.repeat_y)
-        datName = QFileDialog.getSaveFileName(self,
+            defaultDatName = './STM_C_{}_{}x{}.npy'.format(self.zcut, self.repeat_x, self.repeat_y)
+        datName, _ = QFileDialog.getSaveFileName(self,
                        'Save Data:', defaultDatName, '')
 
-        if datName and self.STMData:
-            xx = np.vstack((self.STMXCoord[np.newaxis, ...],
-                            self.STMYCoord[np.newaxis, ...],
-                            self.STMData[np.newaxis, ...]))
+        if datName and self.STMData.size != 0:
+            xx = np.vstack((self.STMXCoord,
+                            self.STMYCoord,
+                            self.STMData))
             np.savetxt(str(datName), xx)
     
     def GenerateData(self):
