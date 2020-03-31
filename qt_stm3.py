@@ -151,9 +151,9 @@ class Form(QMainWindow):
                        'Save Data:', defaultDatName, '')
 
         if datName and self.STMData.size != 0:
-            xx = np.vstack((self.STMXCoord[np.newaxis, ...],
-                            self.STMYCoord[np.newaxis, ...],
-                            self.STMData[np.newaxis, ...]))
+            xx = np.vstack((self.STMXCoord,
+                            self.STMYCoord,
+                            self.STMData))
             np.savetxt(str(datName), xx)
     
     def GenerateData(self):
