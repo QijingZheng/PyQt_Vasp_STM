@@ -78,7 +78,7 @@ class Form(QMainWindow):
         self.zcut = None
         self.pc = None
         self.cmap = 'hot'
-        self.dpi = 300
+        self.dpi = 800
         self.repeat_x = 1
         self.repeat_y = 1
         self.vmin = None
@@ -88,7 +88,9 @@ class Form(QMainWindow):
                                'bwr', 'bwr_r',
                                'coolwarm', 'coolwarm_r',
                                'seismic', 'seismic_r',
-                               'RdBu', 'RdBu_r']
+                               'RdBu', 'RdBu_r', 
+                               'Greys', 'Spectral',
+                               'rainbow']
             
 
         # 0 for IsoHeight and 1 for IsoCurrent STM image
@@ -194,7 +196,8 @@ class Form(QMainWindow):
             self.axes.pcolormesh(self.STMXCoord, self.STMYCoord, self.STMData,
                                  cmap=self.cmap,
                                  vmin=self.vmin,
-                                 vmax=self.vmax
+                                 vmax=self.vmax,
+                                 shading='gouraud'
                                  )
 
         self.canvas.draw()

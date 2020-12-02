@@ -71,7 +71,7 @@ class vaspParchg(VaspChargeDensity):
         # return img_ext.T
 
 
-    def plotIsoHeightImg(self, zcut, repeat=[1,1], cmap='Gray_r'):
+    def plotIsoHeightImg(self, zcut, repeat=[1,1], cmap='Greys_r'):
         dat = self.isoHeight(zcut)
         NX = self.NX
         NY = self.NY
@@ -123,8 +123,8 @@ def parseArgs():
                         default=[1, 1])
     parser.add_argument('-c', '--cmap',
                         type=str,
-                        help='colormap to use, see https://matplotlib.org/tutorials/colors/colormaps.html to choose which you favor, default Gray_r',
-                        default='Gray_r')
+                        help='colormap to use, see https://matplotlib.org/tutorials/colors/colormaps.html to choose you favourite, default Greys_r',
+                        default='Greys_r')
     return parser.parse_args()
 
 
